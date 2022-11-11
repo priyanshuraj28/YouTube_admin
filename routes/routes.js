@@ -1,53 +1,76 @@
 const express = require('express');
+const { body } = require('express-validator');
 const router = express.Router();
-const Data = require("../model/model")
+const Video = require("../model/video");
+const transaction = require("../transactions/transaction");
+const { validationResult } = require('express-validator');
 
-router.get('/getAll', async(req,res)=>{
-    try{
-        const data = await Data.find(); 
-        res.json(data);
-        //console.log(data);
+router.get('/viewAll', async (req, res) => {
+    const {pageSize, pageoffset} = req.query;
+    const video = await transaction.viewALL(pageoffset, pageSize);
+    if (!video) {
+        return res.status(400).json({ message: "Bad Request" })
     }
-    catch(err){  
-        res.status(400).json({message: err.message});
-    }
+    res.status(200).json(video);
 })
 
-router.post('/post', async(req , res) => {
-    const data = new Data(req.body)
-    try{
-        const dataToSave = await data.save();
-        res.status(200).json(dataToSave)
+router.get('/viewOne/:id', async (req, res) => {
+    const videoById = await transaction.viewById(req.params.id);
+    if (!videoById) {
+        return res.status(400).json({ message: "Bad Request" })
     }
-    catch(error){
-        res.status(400).json({message: error.message})
-    }
-    // data.save().then(()=>{
-    //     res.status(200).send(data);
-    // }).catch((error)=>{
-    //     res.status(400).json({message:error.message});
-    // })
+    res.status(200).json(videoById);
 })
 
-router.put('/update/:ID', async(req , res) => {
-    try{
+router.post('/post', [
+    body('title').isAlphanumeric().isLength(0, 50),
+    body('description').isAlphanumeric().isLength(0, 100)], async (req, res) => {
+        const date = new Date();
+        const video = new Video({
+            title: req.body.title,
+            URL: req.body.URL,
+            description: req.body.description,
+            dateUploaded: date
+        });
+        const postVideo = await transaction.post(video);
+        if (!postVideo) {
+            return res.status(400).json({ message: "Bad Request" })
+        }
+        res.status(200).json(postVideo);
+    });
+
+router.put('/update/:ID', [
+    body('title').isAlpha().isLength(0, 50),
+    body('description').isAlpha().isLength(0, 100)],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() })
+        }
         const id = req.params.ID;
         const updatedData = req.body;
-        const options = {new: true};
-        const result = await Data.findByIdAndUpdate(id, updatedData, options);
-        res.send(result);
-    }
-    catch(error){
-        res.status(400).json({message: error.message});
-    }
-})
+        const {
+            URL,
+            title,
+            description,
+            dateUploaded
+        } = updatedData;
+        if (!URL) {
+            return res.status(400).json('Bad request')
+        }
+        const updatedVideo = await transaction.update(id, title, URL, dateUploaded, description);
+        if (!updatedVideo) {
+            return res.status(400).json({ message: "Bad Request" })
+        }
+        res.status(200).send(updatedVideo);
+    });
 
-// router.put('/update/:id',function(req,res,next){
-//     Student.findOneAndUpdate({_id: req.params.id},req.body).then(function(student){
-//         Student.findOne({_id: req.params.id}).then(function(student){
-//             res.send(student);
-//         });
-//     });
-// });
+router.delete('/delete/:id', async (req, res) => {
+    const deleteVideo = await transaction.deleteById(req.params.id);
+    if (!deleteVideo) {
+        return res.status(400).json({ message: "Bad Request" })
+    }
+    res.send({ message: `Document with ${deleteVideo.id} has been deleted` });
+});
 
 module.exports = router;

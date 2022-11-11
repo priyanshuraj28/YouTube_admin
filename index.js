@@ -22,8 +22,9 @@ mongoose.connect(`mongodb://localhost:/Youtube_admin`)
 // })
 app.use(express.json());
 
-app.listen(5000, ()=> {
-    console.log(`Server is running on port http://localhost:${5000}`);
+app.listen(8000, ()=> {
+    console.log(`Server is running on port http://localhost:${8000}`);
 })
 
 app.use('/api', Routes);
+module.exports = app;
