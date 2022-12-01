@@ -1,30 +1,55 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const router = express.Router();
 const Video = require("../model/video");
 const transaction = require("../transactions/transaction");
 const { validationResult } = require('express-validator');
+//const { query } = require('express');
+var validator = require('validator');
 
 router.get('/viewAll', async (req, res) => {
     const {pageSize, pageoffset} = req.query;
+    // [
+    //     query('pageSize').isInt({min:1, max:10},{errorMessage: {
+    //         err: 'Page size is invalid.',
+    //       }}),
+    //     query('pageoffset').isInt({min:0, max:2})
+    // ]
+    if(!pageSize ){
+        res.status(400).json({message: "Bad request"});
+    }
+    if(!pageoffset){
+        res.status(400).json({message: "Bad request"});
+    }
+    //console.time()
     const video = await transaction.viewALL(pageoffset, pageSize);
-    if (!video) {
+    //console.timeEnd()
+    if (!video || video.length <= 0) {
         return res.status(400).json({ message: "Bad Request" })
     }
     res.status(200).json(video);
 })
 
 router.get('/viewOne/:id', async (req, res) => {
+    console.time("Time this")
     const videoById = await transaction.viewById(req.params.id);
+    console.timeEnd("Time this")
     if (!videoById) {
         return res.status(400).json({ message: "Bad Request" })
     }
     res.status(200).json(videoById);
 })
 
-router.post('/post', [
-    body('title').isAlphanumeric().isLength(0, 50),
-    body('description').isAlphanumeric().isLength(0, 100)], async (req, res) => {
+router.post('/post', 
+// [
+//     body('title').isAlphanumeric().isLength(0, 50),
+//     body('description').isAlphanumeric().isLength(0, 100), 
+//     body('URl')
+//     .escape()
+//     .exists({checkFalsy:true})
+//     //.matches([/^https:\/\/(www\.)?a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&=]*))
+//    ] ,
+    async (req, res) => {
         const date = new Date();
         const video = new Video({
             title: req.body.title,
@@ -33,15 +58,16 @@ router.post('/post', [
             dateUploaded: date
         });
         const postVideo = await transaction.post(video);
+        console.log(postVideo)
         if (!postVideo) {
-            return res.status(400).json({ message: "Bad Request" })
+            return res.status(400).json({ message: "Badd Request" })
         }
         res.status(200).json(postVideo);
     });
 
 router.put('/update/:ID', [
-    body('title').isAlpha().isLength(0, 50),
-    body('description').isAlpha().isLength(0, 100)],
+    body('title').isLength(0, 50),
+    body('description').isLength(0, 100)],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

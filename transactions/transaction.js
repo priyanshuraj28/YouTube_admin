@@ -31,7 +31,7 @@ const viewById = async (videoId) => {
 const post = async (video) => {
     try {
         const dataToSave = await video.save();
-        //console.log(dataToSave);
+        console.log(dataToSave);
         return dataToSave;
     }
     catch (error) {
